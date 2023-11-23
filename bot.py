@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands 
 from discord import app_commands
+from discord.ui import View,Button
 import requests
 from PIL import Image 
 import cv2 
@@ -37,15 +38,16 @@ async def on_ready():
    
 @bot.tree.command(name="help",description="show all useful commands") #設定help
 async def help(interaction:discord.Interaction):
-  embed=discord.Embed(color=0x0080ff,title="Commands Menu") #設定嵌入訊息
-  embed.add_field(name="ping", value="顯示ping值", inline=False)
-  embed.add_field(name="repeat" , value="輸入次數與想重複的訊息", inline=False)
-  embed.add_field(name="avatarchange",value="change one's avatar",inline=False)
-  embed.add_field(name="wordgif" , value="send wordgif", inline=False)
-  embed.add_field(name="lottery" , value="抽運勢", inline=False)
-  embed.add_field(name="homework",value="check deadline of homework", inline=False)
-  embed.add_field(name="christmastree",value="生成一個聖誕樹～", inline=False)
-  await interaction.response.send_message(embed=embed) 
+    embed=discord.Embed(color=0x0080ff,title="Commands Menu") #設定嵌入訊息
+    embed.add_field(name="ping", value="顯示ping值", inline=False)
+    embed.add_field(name="repeat" , value="輸入次數與想重複的訊息", inline=False)
+    embed.add_field(name="avatarchange",value="change one's avatar",inline=False)
+    embed.add_field(name="wordgif" , value="send wordgif", inline=False)
+    embed.add_field(name="lottery" , value="抽運勢", inline=False)
+    embed.add_field(name="wordgame" , value="wordgame", inline=False)
+    embed.add_field(name="homework",value="check deadline of homework", inline=False)
+    embed.add_field(name="christmastree",value="生成一個聖誕樹～", inline=False)
+    await interaction.response.send_message(embed=embed) 
 
     
 
@@ -338,5 +340,268 @@ async def homework(interaction:discord.Interaction,imtmu帳號:str,imtmu密碼:s
     await interaction.channel.send(f'```{word}```')
   except:
     await interaction.channel.send("帳號密碼輸入錯誤") #帳號密碼錯誤 會沒保持登入鍵 可以按
+@bot.tree.command(name="wordgame",description="wordgame")
+async def wordgame(interaction:discord.Interaction,nickname:str):
+    name=nickname
+    chid = interaction.channel.id
+    atid= interaction.user.id
+    ez=Button(label="簡單",style=discord.ButtonStyle.green)
+    mn=Button(label="中等",style=discord.ButtonStyle.green)
+    hd=Button(label="困難",style=discord.ButtonStyle.green)
+    view=View(timeout=None)
+    view.add_item(ez)
+    view.add_item(mn)
+    view.add_item(hd)
+    async def  callback1(interaction):
+        global a,b ,answer,guess
+        c=""
+        a=1
+        b=100
+        guess=0
+        answer= random.randint(a,b)
+        await interaction.response.edit_message(delete_after=0.5)
+        ck=0
+        await interaction.channel.send("起始分數為1000，答錯一次扣50分")
+        while ck==0:
+            await interaction.channel.send("{}請輸入一個介於{}到{}的數字:".format(c,a,b))
+            msg=await bot.wait_for('message',check=lambda m :m.author.id==atid and m.channel.id==chid and m.content.isdigit()==True)
+            yu=msg.content
+            if str(yu)!=str(answer):
+                c=checknum(yu)[2]
+            else:
+                score=score1(guess)
+                await interaction.channel.send("恭喜答對答案為:{}\n猜測次數為:{}\n分數為:{}".format(answer,guess+1,score))
+                ck=1
+                namelist=[] #歷史名字
+                scorelist=[] #歷史分數
+                try: 
+                    with open('wordgame.json','r', encoding='utf8') as file:
+                        data2 =json.load(file)
+                except: #沒有紀錄會自動建json檔存紀錄
+                    samplelist=[]
+                    samplelist.append({"name":name,"score":str(score)})
+                    with open('wordgame.json','w', encoding='utf8') as file:
+                        json.dump(samplelist,file)  
+                    with open('wordgame.json', 'r', encoding='utf8') as file:
+                        data2 = json.load(file)
+                cc=0
+                for i in range(len(data2)):
+                    if data2[i]["name"]!=name:
+                        namelist.append(data2[i]["name"])
+                        scorelist.append(int(data2[i]["score"]))
+                    else:
+                        if int(data2[i]["score"])>=score:
+                            namelist.append(data2[i]["name"])
+                            scorelist.append(int(data2[i]["score"])) 
+                        else:
+                            namelist.append(data2[i]["name"])
+                            scorelist.append(score) 
+                        cc=1
+                if cc==0:
+                    namelist.append(name)
+                    scorelist.append(score) 
+                temporylist=[]
+                for i in range(len(namelist)):
+                    temporylist.append({"name":str(namelist[i]),"score":str(scorelist[i])})
+                    with open('wordgame.json','w', encoding='utf8') as file:
+                        json.dump(temporylist,file) 
+                wd="歷史排行榜\n"
+                wd+="{:<4} {:<5} {}\n".format("rank","score","name")
+                ranklist = sorted(scorelist) #分數從小排到大
+                ranklist.reverse() #反轉成大到小
+                splist=sorted(list(set(ranklist))) #刪去重複的分數
+                splist.reverse()
+                nmlist=[]
+                def getindex(item=""): #抓分數對應的所有名字
+                    return[i for i in range(len(scorelist)) if scorelist[i]==item]
+                for i in range(len(splist)):
+                    trk=splist[i]
+                    n=getindex(trk)
+                    for k in range(len(n)):
+                        nmlist.append(namelist[n[k]])
+                for i in range(len(namelist)):
+                    if len(wd)>1950:
+                        await interaction.channel.send(f'```{wd}```')
+                        wd=""
+                        wd+="{:<4} {:<5} {}\n".format(i+1,ranklist[i],nmlist[i])
+                    else:
+                        wd+="{:<4} {:<5} {}\n".format(i+1,ranklist[i],nmlist[i])
+                await interaction.channel.send(f'```{wd}```')
+    async def  callback2(interaction):
+        global a,b ,answer,guess
+        c=""
+        a=1
+        b=1000
+        guess=0
+        answer= random.randint(a,b)
+        await interaction.response.edit_message(delete_after=0.5)  
+        ck=0
+        await interaction.channel.send("起始分數為1000，答錯一次扣30分")
+        while ck==0:
+            await interaction.channel.send("{}請輸入一個介於{}到{}的數字:".format(c,a,b))
+            msg=await bot.wait_for('message',check=lambda m :m.author.id==atid and m.channel.id==chid and m.content.isdigit()==True)
+            yu=msg.content
+            if str(yu)!=str(answer):
+                c=checknum(yu)[2]
+            else:
+                score=score2(guess)
+                await interaction.channel.send("恭喜答對答案為:{}\n猜測次數為:{}\n分數為:{}".format(answer,guess+1,score))
+                ck=1
+                namelist=[] #歷史名字
+                scorelist=[] #歷史分數
+                try: 
+                    with open('wordgame.json','r', encoding='utf8') as file:
+                        data2 =json.load(file)
+                except: #沒有紀錄會自動建json檔存紀錄
+                    samplelist=[]
+                    samplelist.append({"name":name,"score":str(score)})
+                    with open('wordgame.json','w', encoding='utf8') as file:
+                        json.dump(samplelist,file)  
+                    with open('wordgame.json', 'r', encoding='utf8') as file:
+                        data2 = json.load(file)
+                cc=0
+                for i in range(len(data2)):
+                    if data2[i]["name"]!=name:
+                        namelist.append(data2[i]["name"])
+                        scorelist.append(int(data2[i]["score"]))
+                    else:
+                        if int(data2[i]["score"])>=score:
+                            namelist.append(data2[i]["name"])
+                            scorelist.append(int(data2[i]["score"])) 
+                        else:
+                            namelist.append(data2[i]["name"])
+                            scorelist.append(score) 
+                        cc=1
+                if cc==0:
+                    namelist.append(name)
+                    scorelist.append(score) 
+                    
+                temporylist=[]
+                for i in range(len(namelist)):
+                    temporylist.append({"name":str(namelist[i]),"score":str(scorelist[i])})
+                    with open('wordgame.json','w', encoding='utf8') as file:
+                        json.dump(temporylist,file) 
+                wd="歷史排行榜\n"
+                wd+="{:<4} {:<5} {}\n".format("rank","score","name")
+                ranklist = sorted(scorelist) #分數從小排到大
+                ranklist.reverse() #反轉成大到小
+                splist=sorted(list(set(ranklist))) #刪去重複的分數
+                splist.reverse()
+                nmlist=[]
+                def getindex(item=""): #抓分數對應的所有名字
+                    return[i for i in range(len(scorelist)) if scorelist[i]==item]
+                for i in range(len(splist)):
+                    trk=splist[i]
+                    n=getindex(trk)
+                    for k in range(len(n)):
+                        nmlist.append(namelist[n[k]])
+                for i in range(len(namelist)):
+                    if len(wd)>1950:
+                        await interaction.channel.send(f'```{wd}```')
+                        wd=""
+                        wd+="{:<4} {:<5} {}\n".format(i+1,ranklist[i],nmlist[i])
+                    else:
+                        wd+="{:<4} {:<5} {}\n".format(i+1,ranklist[i],nmlist[i])
+                await interaction.channel.send(f'```{wd}```')
+    async def  callback3(interaction):
+        global a,b ,answer,guess
+        c=""
+        a=1
+        b=100000
+        guess=0
+        answer= random.randint(a,b)
+        await interaction.response.edit_message(delete_after=0.5)  
+        ck=0
+        await interaction.channel.send("起始分數為1000，答錯一次扣10分")
+        while ck==0:
+            await interaction.channel.send("{}請輸入一個介於{}到{}的數字:".format(c,a,b))
+            msg=await bot.wait_for('message',check=lambda m :m.author.id==atid and m.channel.id==chid and m.content.isdigit()==True)
+            yu=msg.content
+            if str(yu)!=str(answer):
+                c=checknum(yu)[2]
+            else:
+                score=score3(guess)
+                await interaction.channel.send("恭喜答對答案為:{}\n猜測次數為:{}\n分數為:{}".format(answer,guess+1,score))
+                ck=1
+                namelist=[] #歷史名字
+                scorelist=[] #歷史分數
+                try: 
+                    with open('wordgame.json','r', encoding='utf8') as file:
+                        data2 =json.load(file)
+                except: #沒有紀錄會自動建json檔存紀錄
+                    samplelist=[]
+                    samplelist.append({"name":name,"score":str(score)})
+                    with open('wordgame.json','w', encoding='utf8') as file:
+                        json.dump(samplelist,file)  
+                    with open('wordgame.json', 'r', encoding='utf8') as file:
+                        data2 = json.load(file)
+                cc=0
+                for i in range(len(data2)):
+                    if data2[i]["name"]!=name:
+                        namelist.append(data2[i]["name"])
+                        scorelist.append(int(data2[i]["score"]))
+                    else:
+                        if int(data2[i]["score"])>=score:
+                            namelist.append(data2[i]["name"])
+                            scorelist.append(int(data2[i]["score"])) 
+                        else:
+                            namelist.append(data2[i]["name"])
+                            scorelist.append(score) 
+                        cc=1
+                if cc==0:
+                    namelist.append(name)
+                    scorelist.append(score) 
+                temporylist=[]
+                for i in range(len(namelist)):
+                    temporylist.append({"name":str(namelist[i]),"score":str(scorelist[i])})
+                    with open('wordgame.json','w', encoding='utf8') as file:
+                        json.dump(temporylist,file) 
+                wd="歷史排行榜\n"
+                wd+="{:<4} {:<5} {}\n".format("rank","score","name")
+                ranklist = sorted(scorelist) #分數從小排到大
+                ranklist.reverse() #反轉成大到小
+                splist=sorted(list(set(ranklist))) #刪去重複的分數
+                splist.reverse()
+                nmlist=[]
+                def getindex(item=""): #抓分數對應的所有名字
+                    return[i for i in range(len(scorelist)) if scorelist[i]==item]
+                for i in range(len(splist)):
+                    trk=splist[i]
+                    n=getindex(trk)
+                    for k in range(len(n)):
+                        nmlist.append(namelist[n[k]])
+                for i in range(len(namelist)):
+                    if len(wd)>1950:
+                        await interaction.channel.send(f'```{wd}```')
+                        wd=""
+                        wd+="{:<4} {:<5} {}\n".format(i+1,ranklist[i],nmlist[i])
+                    else:
+                        wd+="{:<4} {:<5} {}\n".format(i+1,ranklist[i],nmlist[i])
+                await interaction.channel.send(f'```{wd}```')
+    ez.callback=callback1
+    mn.callback=callback2
+    hd.callback=callback3
+    await interaction.response.send_message("請選擇難易度",view=view)
+    def score1(x): #計算分數
+        return(1000-x*50)
+    def score2(x): #計算分數
+        return(1000-x*30)
+    def score3(x): #計算分數
+        return(1000-x*10)
+    def checknum(yu): #判斷輸入的數字
+        global a ,b ,guess,c,answer
+        if int(yu)>b or int(yu)<a:
+            guess+=1
+            return(a,b,"",guess)
+        elif int(yu)>answer:
+            c="太大了，"
+            b=int(yu)
+            guess+=1
+            return(a,b,c,guess)
+        elif int(yu)<answer:
+            c="太小了，"
+            a=int(yu)
+            guess+=1
+            return(a,b,c,guess)
 
 bot.run(jdata['TOKEN']) #隱藏token
