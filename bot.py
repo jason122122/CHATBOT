@@ -24,7 +24,6 @@ import time
 import datetime
 import random
 import nest_asyncio
-import random
 nest_asyncio.apply()
 
 intents = discord.Intents.all() # intents是要求機器人的權限
