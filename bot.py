@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Nov 23 13:08:45 2023
-
-@author: hungchenya
-"""
-
 import discord
 from discord.ext import commands 
 from discord import app_commands
